@@ -1,12 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
 # Datasets
 *.zip
 
-# Kaggle credentials
+# Credentials
 kaggle.json
 
-# Python / Jupyter
-__pycache__/
-.ipynb_checkpoints/
-
-# Colab / temporary files
-*.pyc
+# VS Code
+.vscode/
