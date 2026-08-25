@@ -127,7 +127,7 @@ The training datasets, Kaggle credentials, virtual environment, Python cache fil
 Clone the repository and move into the project directory:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Umer-1707/Brain-Tumor-Detection-Segmentation.git
 cd "Brain Tumor Detection & Segmentation"
 ```
 
