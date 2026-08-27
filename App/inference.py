@@ -2,7 +2,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from preprocessing import preprocess_mri
+from App.preprocessing import preprocess_mri
 
 
 # ============================================================
