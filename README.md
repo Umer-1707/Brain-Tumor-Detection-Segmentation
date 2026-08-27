@@ -74,11 +74,76 @@ This notebook was used to verify that both trained models worked together as a c
 - Ran classification and segmentation together.
 - Visualized the final predicted tumor masks.
 
-## Result
+## Results
 
-The final pipeline successfully performs MRI preprocessing, tumor classification, and tumor segmentation through a single application.
+Both models were evaluated on held-out test sets (never seen during training or validation) to confirm they generalize to unseen data, not just perform well on training data.
 
-The resulting Streamlit interface displays the prediction, confidence score, predicted tumor mask, and an optional overlay on the original MRI.
+---
+
+### Classification — 4-Class CNN
+
+Trained on 10,560 preprocessed MRI images (grayscale, 224×224), stratified 70/15/15 split (7,392 train / 1,584 val / 1,584 test). Class weights were applied to offset the natural imbalance across classes (`no_tumor` was the minority class at 1,757 images vs. 3,754 for `glioma`). Train/val/test splits were verified to have zero overlap.
+
+**Test set performance:**
+
+| Metric | Score |
+|---|---|
+| Test Accuracy | **88.38%** |
+| Test Loss | 0.3022 |
+| Model size | 617K params (2.35 MB) |
+
+**Per-class metrics (test set, n = 1,584):**
+
+| Class | Precision | Recall | F1-score | Support |
+|---|---|---|---|---|
+| Glioma | 0.9463 | 0.8757 | 0.9096 | 563 |
+| Meningioma | 0.7597 | 0.7812 | 0.7703 | 352 |
+| No Tumor | 0.9163 | 0.9163 | 0.9163 | 263 |
+| Pituitary | 0.8927 | 0.9631 | 0.9265 | 406 |
+| **Macro avg** | 0.8787 | 0.8841 | 0.8807 | 1,584 |
+| **Weighted avg** | 0.8861 | 0.8838 | 0.8841 | 1,584 |
+
+**Clinically-relevant check — missed tumor rate:** of 1,321 actual tumor-positive test images, only **22 were misclassified as `no_tumor`** — a **1.67% false-negative rate**. This matters more than raw accuracy for a screening system, since missing a real tumor is a far costlier error than confusing one tumor type for another.
+
+Meningioma is the weakest class (F1 0.77) and the main driver of overall classification error — a known limitation and a target for future improvement (more meningioma samples, finer-grained augmentation).
+
+---
+
+### Segmentation — Residual U-Net
+
+Trained on 3,063 paired MRI/mask images (grayscale, 224×224, binary masks), split 2,144 / 459 / 460 (train/val/test), with confirmed zero overlap between splits. Loss: combined Binary Cross-Entropy + Dice loss. Optimizer used a `ReduceLROnPlateau` schedule with early stopping.
+
+**Baseline U-Net vs. Residual U-Net:**
+
+| Model | Best Val Dice | Best Val IoU | Verdict |
+|---|---|---|---|
+| Baseline U-Net | ~0.668 | ~0.504 | Insufficient — replaced |
+| **Residual U-Net** | **0.8247** | **0.7047** | Adopted |
+
+Switching from a standard U-Net to a Residual U-Net (residual blocks with skip connections in encoder and decoder) lifted validation Dice from ~0.67 to ~0.82 and IoU from ~0.50 to ~0.70 — the reason the baseline was dropped in favor of this architecture.
+
+**Final Residual U-Net — held-out test set performance:**
+
+| Metric | Score |
+|---|---|
+| Dice coefficient | **0.8228** |
+| IoU score | **0.7041** |
+| Test loss (BCE + Dice) | 0.2092 |
+| Pixel-level Precision | 0.8589 |
+| Pixel-level Recall | 0.7966 |
+| Model size | 8.1M params (30.98 MB) |
+
+Test Dice/IoU (0.8228 / 0.7041) closely track the restored checkpoint's validation numbers (0.8245 / 0.7039) — a good sign the model generalizes consistently rather than overfitting to the validation split specifically. Precision (0.86) trailing above Recall (0.80) suggests the model is slightly conservative — it occasionally under-segments (misses some tumor pixels) rather than over-segmenting healthy tissue as tumor.
+
+---
+
+### End-to-End Pipeline
+
+Verified by chaining both trained models on held-out sample MRIs: a glioma test scan was classified with **91.58% confidence**, correctly triggering the segmentation stage, which produced a tumor mask closely aligned with the ground-truth region — confirming the two independently trained models work correctly together as a single inference pipeline before being wrapped in the Streamlit app.
+
+---
+
+> **Metric notes:** Precision/Recall/F1 are standard classification metrics. Dice coefficient and IoU (Intersection over Union) both measure overlap between predicted and ground-truth tumor regions at the pixel level — Dice weights overlap more heavily, IoU is the stricter, more conservative measure. Both are standard for evaluating medical image segmentation.
 
 ## Application Structure
 
