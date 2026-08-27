@@ -7,7 +7,7 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 
-from App.inference import run_inference
+from inference import run_inference
 
 
 MIDNIGHT       = "#08141B"
